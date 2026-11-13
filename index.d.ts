@@ -11598,9 +11598,15 @@ export declare function playStreamingSound(sound: StreamingSound, options?: Stre
  *  GPU bindings in declaration order from {@link MaterialPlugin.bindTextures}. */
 export declare interface PluginSamplerDecl {
     readonly texture: string;
-    readonly sampler: string;
+    /** The sampler's name in the shader. Omit it for a texture that brings no sampler of its own: one read
+     *  with `textureLoad`, or sampled through another declaration's sampler. A stage has sixteen samplers,
+     *  and the PBR material uses several. Pair with `sampler: false` on the texture's `PluginTextureBinding`. */
+    readonly sampler?: string;
     /** Defaults to "texture_2d<f32>". */
-    readonly textureType?: "texture_2d<f32>";
+    readonly textureType?: "texture_2d<f32>" | "texture_2d_array<f32>";
+    /** The binding's sample type. Defaults to `"float"`; `"unfilterable-float"` for a 32-bit float data
+     *  texture read with `textureLoad` on a device without `float32-filterable`. */
+    readonly sampleType?: GPUTextureSampleType;
     /** Declare a depth texture when using `enablePbrMaterialPluginVertexData`. */
     readonly depthTexture?: boolean;
     /** Defaults to "sampler". */
@@ -11613,7 +11619,9 @@ export declare interface PluginSamplerDecl {
  *  only — no raw GPU handles (GUIDANCE §4d). The engine reads `texture.view` /
  *  `texture.sampler` internally. */
 export declare interface PluginTextureBinding {
-    readonly texture: Texture2D;
+    readonly texture: Texture2D | Texture2DArray;
+    /** `false` for a texture declared without a sampler of its own. */
+    readonly sampler?: false;
 }
 
 /** A custom uniform contributed by a plugin. The WGSL `type` is used verbatim
