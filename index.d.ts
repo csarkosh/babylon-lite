@@ -8738,6 +8738,11 @@ export declare interface MaterialPlugin {
     };
     /** Declare custom vertex-to-fragment varyings. */
     getVaryings?(): PluginVaryingDecl[];
+    /** Declare per-instance vertex attributes, read by name in the plugin's vertex code and fed from the
+     *  mesh's `thinInstances.pluginData` (one interleaved buffer; `stride` and `offset` in bytes). Needs
+     *  `enablePbrMaterialPluginVertexData()`. The direct thin-instance draw path only: not with GPU culling
+     *  or a LOD partner. */
+    getInstanceAttributes?(): PluginInstanceAttributeDecl[];
     /** Declare custom texture/sampler bindings. */
     getSamplers?(): PluginSamplerDecl[];
     /** Write this plugin's UBO slice. `offsets` maps field name → byte offset. */
@@ -11618,6 +11623,19 @@ export declare interface PluginUboField {
     readonly type: string;
     /** Shader stages that read this field. Defaults to "fragment". */
     readonly visibility?: "vertex" | "fragment" | "vertex-fragment";
+}
+
+/** A per-instance vertex attribute contributed by a plugin. */
+export declare interface PluginInstanceAttributeDecl {
+    readonly name: string;
+    /** The WGSL type, e.g. "vec4<f32>". */
+    readonly type: string;
+    /** The vertex format, e.g. "float32x4". */
+    readonly format: GPUVertexFormat;
+    /** Bytes an instance in `thinInstances.pluginData`. */
+    readonly stride: number;
+    /** Bytes from an instance's start. */
+    readonly offset: number;
 }
 
 /** A custom floating-point vertex-to-fragment varying contributed by a plugin. */
@@ -16578,7 +16596,7 @@ export declare interface ThinInstanceData {
     matrices: Float32Array | Float64Array;
     /** Active instance count. */
     count: number;    /** Optional per-instance RGBA colors (4 floats per instance). */
-    colors?: Float32Array | null;}
+    colors?: Float32Array | null;    /** A material plugin's per-instance attributes (`MaterialPlugin.getInstanceAttributes`), interleaved. */    pluginData?: Float32Array | null;    /** Bump after changing `pluginData` in place, so it is uploaded again. */    pluginVersion?: number;}
 
 /** Options for `setThinInstanceLodPartner`. */
 export declare interface ThinInstanceLodPartnerOptions {
