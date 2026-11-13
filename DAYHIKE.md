@@ -19,7 +19,7 @@ compiled `lib/` (one file a source module) and `index.d.ts`, not the TypeScript 
 All of them concern material plugins on the PBR material: Day Hike's look is a stack of plugins that,
 on Babylon.js, edit the PBR shader at its named points and by regex.
 
-Patches so far, tag `v1.39.3-dayhike.1`:
+Patches so far. Tag `v1.39.3-dayhike.1`:
 
 - **A plugin's BEFORE_LIGHTS code follows the features' code at that point.** The composer filled a
   slot in the order of the fragments' ids, so a plugin's code came before the reflectance feature's,
@@ -40,9 +40,22 @@ Patches so far, tag `v1.39.3-dayhike.1`:
 - **`CUSTOM_VERTEX_DEFINITIONS`:** a plugin's helper functions for the vertex stage. With
   `enablePbrMaterialPluginVertexData()`.
 
-Each was proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
+Tag `v1.39.3-dayhike.2`:
+
+- **A plugin's texture without a sampler of its own.** Each texture a plugin declared brought a
+  sampler, and a stage has sixteen. A `PluginSamplerDecl` may leave `sampler` out (a texture read
+  with `textureLoad`, or through another declaration's sampler), with `sampler: false` on its
+  `PluginTextureBinding`. Its `textureType` also says `texture_2d_array<f32>`, and a `sampleType`
+  reaches the bind group layout (`"unfilterable-float"` for a 32-bit float data texture).
+- **`Camera.projectionHook`**, handed the projection a camera has just computed, to change it in
+  place: a sub-pixel jitter for a temporal anti-aliasing of one's own, an oblique near plane for a
+  mirror. The matrix is cached; bump `projectionVersion` when what the hook writes changes.
+
+The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
-the game's plugins: the pictures agree to within 0.11 of 255 on average.
+the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
+the terrain, the water and the post chain need: ten textures on one sampler with a float table read
+by `textureLoad`, and a projection moved by the hook through a chain of passes with a history.
 
 Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
 paths; PBR render pipelines made asynchronously (Lite makes them with `createRenderPipeline`, so a
