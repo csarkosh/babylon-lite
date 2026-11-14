@@ -8752,6 +8752,10 @@ export declare interface MaterialPlugin {
      *  `pluginVertexData` (one interleaved buffer; `stride` and `offset` in bytes). Needs
      *  `enablePbrMaterialPluginVertexData()`. Every mesh drawn with the material must carry the data. */
     getVertexAttributes?(): PluginInstanceAttributeDecl[];
+    /** WGSL global directives for the fragment module, placed before everything else in it, e.g.
+     *  `diagnostic(off,derivative_uniformity);` for a plugin that samples inside a branch. Needs
+     *  `enablePbrMaterialPluginVertexData()`. */
+    getFragmentDirectives?(): string;
     /** Declare custom texture/sampler bindings. */
     getSamplers?(): PluginSamplerDecl[];
     /** Write this plugin's UBO slice. `offsets` maps field name → byte offset. */
