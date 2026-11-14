@@ -8748,6 +8748,10 @@ export declare interface MaterialPlugin {
      *  `enablePbrMaterialPluginVertexData()`. The direct thin-instance draw path only: not with GPU culling
      *  or a LOD partner. */
     getInstanceAttributes?(): PluginInstanceAttributeDecl[];
+    /** Declare per-vertex attributes, read by name in the plugin's vertex code and fed from the mesh's
+     *  `pluginVertexData` (one interleaved buffer; `stride` and `offset` in bytes). Needs
+     *  `enablePbrMaterialPluginVertexData()`. Every mesh drawn with the material must carry the data. */
+    getVertexAttributes?(): PluginInstanceAttributeDecl[];
     /** Declare custom texture/sampler bindings. */
     getSamplers?(): PluginSamplerDecl[];
     /** Write this plugin's UBO slice. `offsets` maps field name → byte offset. */
@@ -8866,6 +8870,10 @@ export declare interface Mesh extends SceneNode {
     boundMax?: [number, number, number];
     /** Skeleton GPU data (skeletal animation). Type-only — no module dependency. */
     skeleton?: SkeletonData | null;
+    /** A material plugin's per-vertex attributes (`MaterialPlugin.getVertexAttributes`), interleaved. */
+    pluginVertexData?: Float32Array | null;
+    /** Bump after changing `pluginVertexData` in place: it is uploaded again when the mesh is next recorded. */
+    pluginVertexVersion?: number;
     /** Baked vertex-animation (VAT) GPU data — replaces live skinning so the mesh thin-instances.
      *  Mutually exclusive with live `skeleton` skinning. Type-only — no module dependency. */
     vat?: VatData | null;
