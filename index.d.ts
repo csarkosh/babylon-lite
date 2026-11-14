@@ -5384,6 +5384,28 @@ export declare function enableAsyncPbrPipelines(): void;
  *  asked for as draw lists are built. */
 export declare function whenPbrPipelinesIdle(): Promise<void>;
 
+/** A uniform buffer of the application's own that PBR material plugins read (`MaterialPlugin.getUniformBlocks`). */
+export declare interface PluginUniformBlock {
+    /** The WGSL variable's name: a field is read as `<name>.<field>`. */
+    readonly name: string;
+    readonly visibility: "fragment" | "vertex" | "vertex-fragment";
+    /** The block's values; send them with `writePluginUniformBlock`. */
+    readonly data: Float32Array;
+    /** Field name to byte offset in `data`. */
+    readonly offsets: ReadonlyMap<string, number>;
+    readonly buffer: GPUBuffer;
+}
+
+/**
+ * Create a uniform block: one buffer, shared by every material whose plugins name it in
+ * `getUniformBlocks()`. For values that are the same for the whole scene and change every frame,
+ * which in a material's own uniforms cost a buffer write a material: a block costs one.
+ */
+export declare function createPluginUniformBlock(engine: EngineContext, name: string, fields: PluginUniformDecl[], visibility?: "fragment" | "vertex" | "vertex-fragment"): PluginUniformBlock;
+
+/** Send a uniform block's `data` to its buffer. */
+export declare function writePluginUniformBlock(engine: EngineContext, block: PluginUniformBlock): void;
+
 /**
  * Enable bent-normal reflection occlusion (`PbrMaterialProps.bentNormalTexture`).
  *
@@ -8768,6 +8790,10 @@ export declare interface MaterialPlugin {
      *  `diagnostic(off,derivative_uniformity);` for a plugin that samples inside a branch. Needs
      *  `enablePbrMaterialPluginVertexData()`. */
     getFragmentDirectives?(): string;
+    /** Uniform blocks this plugin reads (`createPluginUniformBlock`): buffers of the application's own,
+     *  shared by every material that names them, read in WGSL as `<name>.<field>`. Needs
+     *  `enablePbrMaterialPluginVertexData()`. */
+    getUniformBlocks?(): PluginUniformBlock[];
     /** Declare custom texture/sampler bindings. */
     getSamplers?(): PluginSamplerDecl[];
     /** Write this plugin's UBO slice. `offsets` maps field name → byte offset. */
