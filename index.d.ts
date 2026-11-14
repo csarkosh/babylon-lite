@@ -5373,6 +5373,18 @@ export declare function enableArcRotateKeyboardControls(): void;
 export declare function enableAsyncShaderPipelineCompilation(engine: EngineContext): void;
 
 /**
+ * Make PBR render pipelines off the main thread. A mesh whose pipeline is still compiling is left out
+ * of a forward pass's draw list and joins it on the frame after the pipeline is ready, instead of
+ * holding its first frame while the pipeline compiles. Process-global; call before the first frame.
+ * Shadow and geometry passes still make theirs when first drawn.
+ */
+export declare function enableAsyncPbrPipelines(): void;
+
+/** Resolves when no PBR pipeline is compiling (at once if none is). Draw a frame first: pipelines are
+ *  asked for as draw lists are built. */
+export declare function whenPbrPipelinesIdle(): Promise<void>;
+
+/**
  * Enable bent-normal reflection occlusion (`PbrMaterialProps.bentNormalTexture`).
  *
  * Explicit opt-in so scenes without bent normals carry zero bent-normal bytes: nothing
