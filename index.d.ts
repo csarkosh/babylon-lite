@@ -8629,6 +8629,30 @@ export declare function loadMotionController(engine: EngineContext, source: XRIn
  */
 export declare function loadNodeBlockEmitterWithGeometry(className: string): Promise<BlockEmitter>;
 
+/** dayhike: an environment whose cube the application draws (see {@link createCustomEnvironment}). */
+export declare interface CustomEnvironment {
+    /** The cube: `rgba16float`, linear, six layers, with a full mip chain unless made with `mipmaps: false`. */
+    readonly texture: GPUTexture;
+    /** Level 0 of each layer, to draw into. */
+    readonly faceViews: readonly GPUTextureView[];
+    readonly size: number;
+    readonly textures: EnvironmentTextures;
+    /** Makes the mips (if it has them) from level 0 and, when given, replaces the irradiance: 27 floats in a `.env` file's order (x, y, z, xx, yy, zz, yz, zx, xy; three channels each). */
+    update(polynomial?: Float32Array): void;
+    dispose(): void;
+}
+
+/** dayhike: create and publish a PBR environment the application fills itself, for an unregistered scene without an environment. Nothing is lit by it until the first `update`. */
+export declare function createCustomEnvironment(scene: SceneContext, options: {
+    /** Texels a face. Default 128. */
+    size?: number;
+    brdfUrl: string;
+    /** How far a material's roughness moves the lookup down the mip chain. Default 0.8, Lite's for a prefiltered cube; 0 reads level 0 whatever the roughness, as Babylon.js reads a reflection probe. */
+    lodGenerationScale?: number;
+    /** False for a cube of level 0 alone (with `lodGenerationScale: 0`). Default true. */
+    mipmaps?: boolean;
+}): Promise<CustomEnvironment>;
+
 /** Create, publish, and own a procedural PBR environment for an unregistered scene without an existing environment. */
 export declare function loadProceduralSkyEnvironment(scene: SceneContext, options: ProceduralSkyEnvironmentLoadOptions): Promise<ProceduralSkyEnvironment>;
 
