@@ -16,8 +16,9 @@ compiled `lib/` (one file a source module) and `index.d.ts`, not the TypeScript 
   versions (the `_chunks/` names carry hashes), so a patch may need its site found again; each
   commit's message says what the site is for.
 
-All of them concern material plugins on the PBR material: Day Hike's look is a stack of plugins that,
-on Babylon.js, edit the PBR shader at its named points and by regex.
+The first three tags' patches concern material plugins on the PBR material: Day Hike's look is a
+stack of plugins that, on Babylon.js, edit the PBR shader at its named points and by regex. The
+fourth tag's concern what a frame costs the main thread.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -63,6 +64,34 @@ Tag `v1.39.3-dayhike.3`:
 - **The plain path's `colorF90` is a `var`**, as `colorF0` and `surfaceAlbedo` are, so a plugin can
   scale a dielectric's grazing reflectance with its F0.
 
+Tag `v1.39.3-dayhike.4`, each counted on a replay of Day Hike's own draw lists (352 draws at the
+trailhead) with the pictures unchanged:
+
+- **One uniform buffer a PBR material**, shared by the meshes drawn with it. A renderable made its
+  own, so a material whose uniforms changed was written once a mesh: 353 buffer writes a frame with
+  a plugin whose uniforms move every frame, 72 after (one a material).
+- **The opaque list is recorded in pipeline order within a render order**, so a recorded bundle
+  changes pipeline once a pipeline: 97 changes for 329 draws before, 4 after. The picture is the
+  same but where two opaque surfaces lie at exactly the same depth.
+- **`enableAsyncPbrPipelines()`**: a forward pass's PBR pipelines are made with
+  `createRenderPipelineAsync`, a mesh is left out of the draw list while its pipeline compiles and
+  joins it on the frame after, and `whenPbrPipelinesIdle()` resolves when none is compiling. Without
+  it the frame that first draws a material waits for the compile (3.1 s for the trailhead on a T4).
+  A pipeline that fails is made again the synchronous way, so its error is reported as before.
+  Forward passes only: shadow and geometry passes still make theirs when first drawn.
+- **`createPluginUniformBlock(engine, name, fields)`**: a uniform buffer of the application's own
+  that plugins name in `getUniformBlocks()` and read as `<name>.<field>`, sent with
+  `writePluginUniformBlock`. For what is the same for the whole scene and moves every frame (the
+  sun, the air, a wind's clock): one write a frame, where the materials' own uniforms cost one a
+  material (2 writes a frame at the trailhead, the block and the scene's). With
+  `enablePbrMaterialPluginVertexData()`.
+- **The opaque list is recorded in parts of 32 draws**, and `setMeshVisible` records again only the
+  parts whose visible meshes changed. One bundle held the whole list, so a frustum cull that hides
+  what leaves the view recorded every draw on most frames of a turning camera: 11,326 draws
+  recorded over 300 frames before, 1,076 after. Every other invalidation records every part, as
+  before. Data that is uploaded when its draw is recorded (`pluginVertexData`,
+  `thinInstances.pluginData`) wants `invalidateRenderBundles(engine)` after its version is bumped.
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
@@ -72,7 +101,9 @@ third tag's were proved on the terrain's whole material ported to WGSL (the laye
 trail and feature paints, the far cover and its sun term, the wet surfaces) against the game's own
 picture of its terrain at twelve views: the pictures agree to within 0.12 of 255 on average.
 
+The fourth tag's were counted, not timed: the counts are the same on any machine, and what they
+save in milliseconds is to be measured on the machine the frame times are taken on.
+
 Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
-paths; PBR render pipelines made asynchronously (Lite makes them with `createRenderPipeline`, so a
-material first drawn holds the frame while its pipeline compiles); a mesh added or removed without
-the cached render bundle recorded again.
+paths; shadow and geometry passes' pipelines made asynchronously; a mesh added or removed with only
+its part of the opaque list recorded again.
