@@ -14031,6 +14031,11 @@ export declare function setPbrEnvironment(material: PbrMaterialProps, environmen
  *  before the scene is first built. */
 export declare function setPbrGammaAlbedo(mat: Partial<PbrMaterialProps>): void;
 
+/** Leave every PBR material's colour in linear light: no display curve, clamp or contrast at the
+ *  fragment's end. For a frame whose image processing is a post chain's, drawn into a float target.
+ *  Call before the scene is first built; it holds for every PBR material made after. */
+export declare function enablePbrLinearOutput(): void;
+
 /** Add a thin-film iridescence layer (soap-bubble / oil-slick hue shift) to `mat`.
  *  Registers the iridescence extension globally (idempotent). Call before the scene is
  *  first built. */
