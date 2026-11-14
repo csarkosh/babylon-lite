@@ -11508,6 +11508,8 @@ export declare interface PixelsTexture2DOptions {
     /** Use sRGB format (rgba8unorm-srgb) so the hardware converts to linear on
      *  sample. Use for color data; leave false for lookup tables. Default false. */
     srgb?: boolean;
+    /** Make the smaller levels from the pixels and filter between them. Default false (one level). */
+    mipMaps?: boolean;
 }
 
 /** Sampler / format overrides for `createTexture3DFromPixels()`. */
