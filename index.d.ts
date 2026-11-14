@@ -1610,7 +1610,8 @@ export declare interface Camera {
     fov: number;
     nearPlane: number;
     farPlane: number;
-    /** Called with the projection matrix just written (16 floats, column vectors as Lite lays them out), to
+    /** Called with the projection matrix just written (a perspective one whole: the hook's own edits of the
+     *  last call are gone; 16 floats, column vectors as Lite lays them out), to
      *  change it in place: a sub-pixel jitter for temporal anti-aliasing, an oblique near plane for a mirror.
      *  The matrix is cached: bump `projectionVersion` whenever what the hook writes changes. */
     projectionHook?: (projection: Float32Array, aspectRatio: number) => void;
