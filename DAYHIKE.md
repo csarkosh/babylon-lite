@@ -51,11 +51,26 @@ Tag `v1.39.3-dayhike.2`:
   place: a sub-pixel jitter for a temporal anti-aliasing of one's own, an oblique near plane for a
   mirror. The matrix is cached; bump `projectionVersion` when what the hook writes changes.
 
+Tag `v1.39.3-dayhike.3`:
+
+- **A plugin's per-vertex attributes:** `MaterialPlugin.getVertexAttributes()` declares vertex-step
+  attributes in one interleaved buffer, fed from the mesh's `pluginVertexData` (bump
+  `pluginVertexVersion` after changing it in place; it is uploaded when the mesh is next recorded).
+  With `enablePbrMaterialPluginVertexData()`. Every mesh drawn with the material must carry the data.
+- **A plugin's global directives for the fragment module:** `getFragmentDirectives()` returns text
+  placed before everything else in it, e.g. `diagnostic(off,derivative_uniformity);` for a plugin
+  that samples inside a branch or a loop.
+- **The plain path's `colorF90` is a `var`**, as `colorF0` and `surfaceAlbedo` are, so a plugin can
+  scale a dielectric's grazing reflectance with its F0.
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
 the terrain, the water and the post chain need: ten textures on one sampler with a float table read
-by `textureLoad`, and a projection moved by the hook through a chain of passes with a history.
+by `textureLoad`, and a projection moved by the hook through a chain of passes with a history. The
+third tag's were proved on the terrain's whole material ported to WGSL (the layer blend, the road,
+trail and feature paints, the far cover and its sun term, the wet surfaces) against the game's own
+picture of its terrain at twelve views: the pictures agree to within 0.12 of 255 on average.
 
 Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
 paths; PBR render pipelines made asynchronously (Lite makes them with `createRenderPipeline`, so a
