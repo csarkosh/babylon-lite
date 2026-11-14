@@ -8629,6 +8629,9 @@ export declare function loadMotionController(engine: EngineContext, source: XRIn
  */
 export declare function loadNodeBlockEmitterWithGeometry(className: string): Promise<BlockEmitter>;
 
+/** dayhike: say that a light's fields were changed in place (its specular colour, a hemispheric light's colours, any field without a setter of its own), so the scene's lights buffer is written again. */
+export declare function markLightDirty(light: LightBase): void;
+
 /** dayhike: an environment whose cube the application draws (see {@link createCustomEnvironment}). */
 export declare interface CustomEnvironment {
     /** The cube: `rgba16float`, linear, six layers, with a full mip chain unless made with `mipmaps: false`. */
