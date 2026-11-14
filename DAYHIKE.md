@@ -18,7 +18,8 @@ compiled `lib/` (one file a source module) and `index.d.ts`, not the TypeScript 
 
 The first three tags' patches concern material plugins on the PBR material: Day Hike's look is a
 stack of plugins that, on Babylon.js, edit the PBR shader at its named points and by regex. The
-fourth tag's concern what a frame costs the main thread.
+fourth tag's concern what a frame costs the main thread, the fifth's what a whole view of the game
+needed.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -92,6 +93,23 @@ trailhead) with the pictures unchanged:
   before. Data that is uploaded when its draw is recorded (`pluginVertexData`,
   `thinInstances.pluginData`) wants `invalidateRenderBundles(engine)` after its version is bumped.
 
+Tag `v1.39.3-dayhike.5`, found by drawing one whole view of the game in Lite (141 draws and the game's
+post chain) and comparing it with the game's own picture:
+
+- **An environment the application draws itself: `createCustomEnvironment`.** A cube target with the
+  layers' views to draw into, used as a PBR material's image-based light, with `update()` when it has
+  been drawn again. Day Hike's sky is drawn, not loaded.
+- **A light changed in place is written again: `markLightDirty`.** A light's fields set directly
+  (its intensity, its colour) were not uploaded.
+- **A projection hook is handed a matrix written whole.** The perspective writer sets five entries
+  and left a hook's own last edit in the others, so a jitter added there summed frame on frame.
+- **A mesh's plugin instance data is bound only where the material declares it.** Under a material
+  whose plugins declare no instance attributes it landed in the matrices' slot.
+- **A texture made from pixels can have its smaller levels: `mipMaps`** on
+  `createTexture2DFromPixels`, which made one level and ignored the option.
+- **PBR in linear light for a post chain: `enablePbrLinearOutput`.** The fragment always ended with
+  the display's curve and a clamp; a frame graded by a post chain wants the colour before them.
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
@@ -101,8 +119,15 @@ third tag's were proved on the terrain's whole material ported to WGSL (the laye
 trail and feature paints, the far cover and its sun term, the wet surfaces) against the game's own
 picture of its terrain at twelve views: the pictures agree to within 0.12 of 255 on average.
 
-The fourth tag's were counted, not timed: the counts are the same on any machine, and what they
-save in milliseconds is to be measured on the machine the frame times are taken on.
+The fourth tag's were counted, then timed on a rented Windows machine with an NVIDIA T4 against the
+third tag, main thread a frame: a view whose plugin uniforms move every frame 2.28 ms to 0.33 (0.2
+with the shared block), a still forest view 0.41 to 0.16, a turning view under a frustum cull 0.37 to
+0.28, a world whose meshes and instance lists change 3.38 to 1.40; that last one's frames over 5 ms
+are buffer uploads and did not change.
+
+The fifth tag's were proved on that whole view: with them Lite's picture of Day Hike's forest is
+within 0.75 of 255 of the game's on its low tier (111 draws) and within 0.91 on its medium tier with
+the game's post chain (141 draws, six passes, the temporal anti-aliasing settled).
 
 Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
 paths; shadow and geometry passes' pipelines made asynchronously; a mesh added or removed with only
