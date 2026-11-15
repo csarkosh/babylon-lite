@@ -6595,8 +6595,10 @@ export declare function flowGraphRuntimes(scene: SceneContext): readonly FgRunti
  * to the following flush so dispatch cannot recurse indefinitely. */
 export declare function flushFgEvents(bus: FgEventBus): void;
 
-/** Mark thin instance data dirty after direct array manipulation. */
-export declare function flushThinInstances(mesh: Mesh): void;
+/** Mark thin instance data dirty after direct array manipulation.
+ *  dayhike: with `start`, only the instances `start` to `end` (exclusive; the drawn count when left out) are sent again. The range may lie past the
+ *  drawn count, up to the capacity the instances were set with, so a list can be written and sent before `setThinInstanceDrawCount` shows it. */
+export declare function flushThinInstances(mesh: Mesh, start?: number, end?: number): void;
 
 /**
  * Smoothly animate a {@link GeospatialCamera} to new yaw/pitch/radius/centre over
