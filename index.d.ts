@@ -14827,6 +14827,11 @@ export declare interface ShaderMaterialOptions {
     /** dayhike: uniform blocks of the application's own (`createPluginUniformBlock`) this material reads, in both stages, as `<name>.<field>`:
      *  the buffers the PBR material plugins read, so what is the same for the whole scene is written once a frame for every material. */
     readonly uniformBlocks?: readonly PluginUniformBlock[];
+    /** dayhike: per-instance vertex attributes of the application's own for this material's thin-instanced meshes, read by name
+     *  from `VertexInput` beside `world0`..`world3`, and fed from each mesh's `thinInstances.pluginData` (one interleaved buffer;
+     *  `stride` and `offset` in bytes; `markThinInstancePluginData` after changing it). Every thin-instanced mesh drawn with the
+     *  material must carry the data. The direct thin-instance draw path only: not with GPU culling or a LOD partner. */
+    readonly instanceAttributes?: readonly PluginInstanceAttributeDecl[];
     readonly defines?: ShaderDefineMap;
     /** Bind and inject the mesh's optional thin-instance RGBA stream for this material. Disable on
      *  color-independent overrides (for example a depth caster) that need only the instance matrices. */
