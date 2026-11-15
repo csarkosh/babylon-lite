@@ -8632,6 +8632,12 @@ export declare function loadMotionController(engine: EngineContext, source: XRIn
  */
 export declare function loadNodeBlockEmitterWithGeometry(className: string): Promise<BlockEmitter>;
 
+/** dayhike: say that the floats `start` to `end` (exclusive; the array's end when left out) of a mesh's `thinInstances.pluginData` were changed in place. Bumps `pluginVersion`; only the range is written to the GPU, at the next frame, whether the mesh is shown or hidden, and no draw is recorded again. Ranges named before the write are joined; the buffer is made again only when the array has outgrown it. */
+export declare function markThinInstancePluginData(mesh: Mesh, start?: number, end?: number): void;
+
+/** dayhike: say that the floats `start` to `end` (exclusive; the array's end when left out) of a mesh's `pluginVertexData` were changed in place. Bumps `pluginVertexVersion`; only the range is written to the GPU, at the next frame, whether the mesh is shown or hidden, and no draw is recorded again. Ranges named before the write are joined; the buffer is made again only when the array has outgrown it. */
+export declare function markPluginVertexData(mesh: Mesh, start?: number, end?: number): void;
+
 /** dayhike: say that a light's fields were changed in place (its specular colour, a hemispheric light's colours, any field without a setter of its own), so the scene's lights buffer is written again. */
 export declare function markLightDirty(light: LightBase): void;
 
@@ -8944,7 +8950,8 @@ export declare interface Mesh extends SceneNode {
     skeleton?: SkeletonData | null;
     /** A material plugin's per-vertex attributes (`MaterialPlugin.getVertexAttributes`), interleaved. */
     pluginVertexData?: Float32Array | null;
-    /** Bump after changing `pluginVertexData` in place: it is uploaded again when the mesh is next recorded. */
+    /** Bump after changing `pluginVertexData` in place: the whole array is written again at the next frame, whether the mesh is shown or hidden.
+     *  `markPluginVertexData` bumps it and names the range that changed. */
     pluginVertexVersion?: number;
     /** Baked vertex-animation (VAT) GPU data — replaces live skinning so the mesh thin-instances.
      *  Mutually exclusive with live `skeleton` skinning. Type-only — no module dependency. */
@@ -16696,7 +16703,7 @@ export declare interface ThinInstanceData {
     matrices: Float32Array | Float64Array;
     /** Active instance count. */
     count: number;    /** Optional per-instance RGBA colors (4 floats per instance). */
-    colors?: Float32Array | null;    /** A material plugin's per-instance attributes (`MaterialPlugin.getInstanceAttributes`), interleaved. */    pluginData?: Float32Array | null;    /** Bump after changing `pluginData` in place, so it is uploaded again. */    pluginVersion?: number;}
+    colors?: Float32Array | null;    /** A material plugin's per-instance attributes (`MaterialPlugin.getInstanceAttributes`), interleaved. */    pluginData?: Float32Array | null;    /** Bump after changing `pluginData` in place: the whole array is written again at the next frame, whether the mesh is shown or hidden. `markThinInstancePluginData` bumps it and names the range that changed. */    pluginVersion?: number;}
 
 /** Options for `setThinInstanceLodPartner`. */
 export declare interface ThinInstanceLodPartnerOptions {
