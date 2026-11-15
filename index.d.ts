@@ -14824,6 +14824,9 @@ export declare interface ShaderMaterialOptions {
     readonly samplers?: readonly ShaderSamplerOption[];
     readonly externalTextures?: readonly string[];
     readonly storageBuffers?: readonly ShaderStorageBufferOption[];
+    /** dayhike: uniform blocks of the application's own (`createPluginUniformBlock`) this material reads, in both stages, as `<name>.<field>`:
+     *  the buffers the PBR material plugins read, so what is the same for the whole scene is written once a frame for every material. */
+    readonly uniformBlocks?: readonly PluginUniformBlock[];
     readonly defines?: ShaderDefineMap;
     /** Bind and inject the mesh's optional thin-instance RGBA stream for this material. Disable on
      *  color-independent overrides (for example a depth caster) that need only the instance matrices. */
