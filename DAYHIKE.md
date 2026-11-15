@@ -19,7 +19,7 @@ compiled `lib/` (one file a source module) and `index.d.ts`, not the TypeScript 
 The first three tags' patches concern material plugins on the PBR material: Day Hike's look is a
 stack of plugins that, on Babylon.js, edit the PBR shader at its named points and by regex. The
 fourth tag's concern what a frame costs the main thread, the fifth's what a whole view of the game
-needed.
+needed, the sixth's what the game costs as it streams its world past a moving camera.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -57,7 +57,8 @@ Tag `v1.39.3-dayhike.3`:
 
 - **A plugin's per-vertex attributes:** `MaterialPlugin.getVertexAttributes()` declares vertex-step
   attributes in one interleaved buffer, fed from the mesh's `pluginVertexData` (bump
-  `pluginVertexVersion` after changing it in place; it is uploaded when the mesh is next recorded).
+  `pluginVertexVersion` after changing it in place; until the sixth tag it was uploaded when the mesh
+  was next recorded).
   With `enablePbrMaterialPluginVertexData()`. Every mesh drawn with the material must carry the data.
 - **A plugin's global directives for the fragment module:** `getFragmentDirectives()` returns text
   placed before everything else in it, e.g. `diagnostic(off,derivative_uniformity);` for a plugin
@@ -91,7 +92,8 @@ trailhead) with the pictures unchanged:
   what leaves the view recorded every draw on most frames of a turning camera: 11,326 draws
   recorded over 300 frames before, 1,076 after. Every other invalidation records every part, as
   before. Data that is uploaded when its draw is recorded (`pluginVertexData`,
-  `thinInstances.pluginData`) wants `invalidateRenderBundles(engine)` after its version is bumped.
+  `thinInstances.pluginData`) wants `invalidateRenderBundles(engine)` after its version is bumped
+  (until the sixth tag, which sends it when its version moves).
 
 Tag `v1.39.3-dayhike.5`, found by drawing one whole view of the game in Lite (141 draws and the game's
 post chain) and comparing it with the game's own picture:
@@ -109,6 +111,47 @@ post chain) and comparing it with the game's own picture:
   `createTexture2DFromPixels`, which made one level and ignored the option.
 - **PBR in linear light for a post chain: `enablePbrLinearOutput`.** The fragment always ended with
   the display's curve and a clamp; a frame graded by a post chain wants the colour before them.
+
+Tag `v1.39.3-dayhike.6`, each counted on Day Hike itself drawn by Lite, at three of its views on its low
+and medium tiers (a still camera, a turning one over 300 frames, a walk of 100 m over 1,300), every call
+the page makes to the GPU counted, with the pictures unchanged:
+
+- **Thin instances written past the drawn count are sent.** An upload was held to the drawn count, so a
+  matrix or a colour set past it was taken as sent and never was. The dirty range is held to the
+  capacity, and `flushThinInstances(mesh, start, end)` marks a range of instances alone: a list can be
+  written and sent before `setThinInstanceDrawCount` shows it.
+- **Plugin data is sent when its version moves, by range, shown or hidden.** `thinInstances.pluginData`
+  and `pluginVertexData` were written only while their draw was being recorded, so every change wanted
+  `invalidateRenderBundles(engine)`, which records every draw of every pass, and each write sent the
+  whole array. They are synchronised in the renderable's update now, for a hidden mesh as for a shown
+  one, and `markThinInstancePluginData(mesh, start, end)` and `markPluginVertexData(mesh, start, end)`
+  bump the version and name the floats that changed. Over the walk at the forest view on the medium
+  tier: 122,402 draws recorded before, 13,508 after, with no call to `invalidateRenderBundles` (608
+  before); under the turning camera, 5,635 and 735.
+- **A mesh added or removed records only its own part of the opaque list.** The list's parts were cut
+  by place, and a list built again dropped them all. They are cut where the renderables say (one in 24
+  proposes a cut, made at the next change of pipeline), a list built again keeps its bundles, and a
+  part is recorded again only where its draws differ. On a list of 180 draws a mesh added recorded 164
+  before and 25 after; the same walk, 13,508 draws recorded to 11,899. The parts are smaller: a still
+  frame replays 8 to 18 bundles where it replayed 7 to 13, and sets as many pipelines to within two.
+- **A list's buffer made again records only its own part.** A thin-instance list that outgrew a buffer,
+  or first drew through indirect arguments, marked every recorded draw of every pass stale.
+  `bumpDrawEpoch` counts the change on the mesh, and a list's parts hold their meshes' counts. The same
+  walk, 11,899 draws recorded to 2,491; the turning camera, 735 to 59.
+- **`uniformBlocks` on a shader material**: the blocks of `createPluginUniformBlock`, bound after the
+  material's storage buffers and read as `<name>.<field>` in both stages, so a shader material reads
+  what the PBR plugins read and is not written a copy of it every frame.
+- **`instanceAttributes` on a shader material**: per-instance attributes of the application's own for
+  its thin instances, declared as a plugin's are and fed from `thinInstances.pluginData`. The direct
+  thin-instance draw path only.
+- **The lights buffer and a PBR mesh's own buffer are written only when their bytes changed.** A
+  renderer that sets its lights every frame was sent 1,040 bytes a frame of a still view, and a mesh
+  whose geometry is written in place the matrix it had. With the shader materials on the shared block,
+  a still frame's buffer writes at the forest view go from 3 to 2 on the low tier and from 4 to 2 on
+  the medium (what is left is the application's own: its block, and its mist banks' matrices).
+- **A disposed mesh's plugin buffers are destroyed with it**, where they waited for the garbage
+  collector.
+- **The scene's bind group is set once a pass**, not also before the bundles, which discard it.
 
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
@@ -129,6 +172,17 @@ The fifth tag's were proved on that whole view: with them Lite's picture of Day 
 within 0.75 of 255 of the game's on its low tier (111 draws) and within 0.91 on its medium tier with
 the game's post chain (141 draws, six passes, the temporal anti-aliasing settled).
 
+The sixth tag's were counted on the game itself, and proved by its pictures against the fifth tag's with
+the game using every hook: the same bytes on the low tier at three views, still and after the walk
+(but two pixels of one frame, by 1 of 255); on the medium tier, whose motes drift with the clock, the
+same bytes at one view and all but four pixels at another with the clock held at one value on both
+pages, and otherwise within what two runs of one build differ by (0.001 of 255 on average). The parts
+were also driven on a stand-in device through thousands of random changes (meshes added, removed,
+shown, hidden, buffers made again), each frame replaying exactly the list.
+
 Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
-paths; shadow and geometry passes' pipelines made asynchronously; a mesh added or removed with only
-its part of the opaque list recorded again.
+paths; shadow and geometry passes' pipelines made asynchronously; an opaque order that keeps a
+pipeline's draws together across the places an application names for its materials (Day Hike's named
+places set a pipeline 15 to 45 times a frame for 8 to 19 pipelines); a thin-instanced mesh joining a
+built scene without every PBR renderable of the scene being built again (2,000 to 2,750 bind groups
+made in one of the game's loads); one vertex buffer a mesh where there are four to six.
