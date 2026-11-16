@@ -5756,6 +5756,41 @@ export declare interface RenderTaskBreak {
  * `enableRenderTaskTransmission` on one task.
  */
 export declare function enableRenderTaskBreak(task: RenderTask, engine: EngineContext, options?: RenderTaskBreakOptions): RenderTaskBreak;
+/** The engine's GPU device: for the pipelines, bind groups and textures of passes of the application's own. */
+export declare function getGpuDevice(engine: EngineContext): GPUDevice;
+
+/** The command encoder of the frame being drawn, or undefined outside a frame: what a task's `execute` begins passes
+ *  of its own on, in its place among the frame's tasks. */
+export declare function getFrameEncoder(engine: EngineContext): GPUCommandEncoder | undefined;
+
+/** A render target's attachments as they stand (`getRenderTargetAttachments`). */
+export declare interface RenderTargetAttachments {
+    colorTexture: GPUTexture | null;
+    colorView: GPUTextureView | null;
+    depthTexture: GPUTexture | null;
+    depthView: GPUTextureView | null;
+    width: number;
+    height: number;
+}
+
+/** A render target's attachments as they now stand, into `into` (a new object without one): null before the target
+ *  is built, and made again when it is (a resize); a surface's own target (`scRT`) holds the canvas's texture of the
+ *  frame being drawn. Read them when a task is recorded, or in its `execute` for the canvas's. */
+export declare function getRenderTargetAttachments(target: RenderTarget, into?: RenderTargetAttachments): RenderTargetAttachments;
+
+/** What a task of the application's own does (`createCustomTask`). */
+export declare interface CustomTaskBody {
+    name: string;
+    /** Called when the frame graph is built: at registration and at every resize. */
+    record?: () => void;
+    /** Called once a frame in the task's place among the scene's tasks; returns the draws it made. */
+    execute: () => number;
+    dispose?: () => void;
+}
+
+/** A task of the application's own for a scene's frame graph (`addTask`, `addTaskAtStart`), which draws passes of its
+ *  own on the frame's encoder (`getFrameEncoder`). */
+export declare function createCustomTask(engine: EngineContext, scene: SceneContext, body: CustomTaskBody): Task;
 
 /** Enable scene-color transmission for every render task currently registered in a scene. PBR materials are marked for linear transmission, and a trailing image-processing task is appended when needed. */
 export declare function enableSceneTransmission(scene: SceneContext, engine: EngineContext): void;
