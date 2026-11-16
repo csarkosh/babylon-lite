@@ -5717,6 +5717,44 @@ export declare function enableRenderTaskMeshRefresh(task: RenderTask): void;
 
 /** Enable mid-pass scene-color grabs for a single render task and return the live texture handle. The task is wrapped so transmissive draw calls can sample the opaque color rendered earlier in the same pass. */
 export declare function enableRenderTaskTransmission(task: RenderTask, engine: EngineContext, options?: TransmissionOptions): SceneColorGrab;
+/** What `enableRenderTaskBreak` keeps of the frame as a task's first half drew it. */
+export declare interface RenderTaskBreakOptions {
+    /** Keep the colour, in a texture of the task's own size and format, one level, one sample a pixel. A
+     *  multisampled task's first half is resolved into it in place of the task's resolve target: no copy and no
+     *  pass. A single-sampled task's colour is copied into it (none is kept of the canvas's own target).
+     *  Default true. */
+    color?: boolean;
+    /** Keep the depth as the first half left it: `r32float` at the task's size, the depth as stored, sample 0 of a
+     *  multisampled depth. One pass of one triangle on a frame that breaks. Default false. */
+    depth?: boolean;
+    /** Called between the halves on a frame that breaks, with the frame's command encoder: passes of the
+     *  application's own (a depth resolve of its own, say). */
+    onBreak?: (encoder: GPUCommandEncoder) => void;
+}
+
+/** Handle to a render task's break, returned by `enableRenderTaskBreak`. */
+export declare interface RenderTaskBreak {
+    /** The colour as the first half drew it, or null before the task is first recorded or when none is kept. Made
+     *  again whenever the task is recorded (a resize): a PBR material on a mesh marked `afterBreak` has its bind
+     *  group made after it, so its plugin's `bindTextures` may hand this on as it stands. */
+    readonly texture: Texture2D | null;
+    /** The depth as the first half left it (`depth: true`), or null. Made again as `texture` is. */
+    readonly depthTexture: Texture2D | null;
+    /** Frames drawn in two halves since the break was enabled. */
+    readonly breaks: number;
+}
+
+/**
+ * Break a render task's pass in two on the frames that show a mesh marked `afterBreak`, keeping the frame as the
+ * first half drew it for the second half to read. The first half is the task's opaque and direct draws; the second
+ * begins the pass again over what the first stored and draws the marked meshes and the see-through draws: a marked
+ * mesh with an opaque material first among them, by its render order, testing and writing depth as any opaque draw;
+ * a marked see-through mesh in its place in the back-to-front order. A frame that shows no marked mesh is drawn in
+ * one pass, as a task without a break draws it, and nothing is kept. The task's opaque list stays recorded in its
+ * parts. Call before the task is first recorded (before its scene is registered); not together with
+ * `enableRenderTaskTransmission` on one task.
+ */
+export declare function enableRenderTaskBreak(task: RenderTask, engine: EngineContext, options?: RenderTaskBreakOptions): RenderTaskBreak;
 
 /** Enable scene-color transmission for every render task currently registered in a scene. PBR materials are marked for linear transmission, and a trailing image-processing task is appended when needed. */
 export declare function enableSceneTransmission(scene: SceneContext, engine: EngineContext): void;
@@ -8966,6 +9004,11 @@ export declare interface Mesh extends SceneNode {
      *  Enable transmission on the task with `enableRenderTaskTransmission`; only transparent surfaces
      *  (`needAlphaBlending`) are deferred. No effect on tasks without transmission. */
     renderOnTop?: boolean;
+    /** On a render task with a break (`enableRenderTaskBreak`), draw this mesh in the half after the break, where
+     *  its material may read the frame as drawn so far: an opaque material first of that half, a see-through one in
+     *  its place among the see-through draws. The pass is broken only on frames where such a mesh is visible. Read
+     *  when the mesh's draw is built: set it before the mesh joins a scene. No effect on a task without a break. */
+    afterBreak?: boolean;
     /** Thin instance data (CPU-side). GPU buffer managed by render system. */
     thinInstances?: ThinInstanceData | null;    /** Explicit opt-in that this mesh's RGBA vertex or thin-instance colours drive
      *  translucency (Babylon `AbstractMesh.hasVertexAlpha`). When `true` and the mesh
