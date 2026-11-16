@@ -12602,6 +12602,13 @@ export declare function removeHierarchyInstance(pool: HierarchyInstancePool, ind
 
 /** Remove a mesh and its task-owned resources from this task. Idempotent. */
 export declare function removeMeshFromTask(task: RenderTask, mesh: object): void;
+/** Show or hide a mesh in this task alone, whatever `mesh.visible` says: `true` draws it here though it is hidden
+ *  everywhere else, `false` leaves it out here though it is shown, `undefined` hands the word back to the mesh.
+ *  Only this task's recorded parts that hold the mesh are recorded again; no other task is touched, and a task
+ *  with no such mesh pays nothing. For a draw with one mesh (every PBR and standard draw, a see-through or
+ *  thin-instanced shader draw): opaque plain meshes that share one shader material are drawn together and follow
+ *  the meshes' own word. Forgotten when the mesh is removed from the task. */
+export declare function setTaskMeshVisible(task: RenderTask, mesh: Mesh, visible: boolean | undefined): void;
 
 /** Remove an instance from a scene. Idempotent; the instance stops being
  *  selected or submitted immediately. */
