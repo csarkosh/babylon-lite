@@ -12946,6 +12946,16 @@ export declare interface RenderTaskConfig {
     cam?: Camera | null;
     /** Use canvas dimensions, not render-target dimensions, for this pass's scene UBO aspect. */
     cs?: boolean;
+    /** dayhike: with `clr` and a camera that has a `viewport`, clear the viewport alone: the pass loads its target, and
+     *  one triangle lays the clear colour and the depth's clear value over the viewport before the task's draws, so
+     *  what the target holds outside it stands. For a task that draws into one part of a larger picture. The colour
+     *  format must be one that blends; a stencil is left as it was. Default false: the whole target is cleared. */
+    clearViewport?: boolean;
+    /** dayhike: after the task's draws, one triangle over the pass's viewport writes an alpha of 1 wherever the pass
+     *  wrote depth (wherever the depth is no longer its clear value), and nothing else: for a picture whose alpha is
+     *  read as "something was drawn here", which an alpha-tested PBR material would leave at the alpha it was cut at.
+     *  Needs a depth attachment; see-through draws, which write no depth, leave their own alpha. Default false. */
+    alphaWhereDrawn?: boolean;
     /** Scene-texture transmission settings. `copyCount: 0` copies before every transmissive draw.
      *  `generateMipmaps: false` allocates only mip 0 for the refraction texture and skips mip generation.
      *  `mipLevelCount` caps the generated chain when a material only samples low explicit LODs.
