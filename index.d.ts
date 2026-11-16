@@ -5404,8 +5404,9 @@ export declare interface PluginUniformBlock {
  */
 export declare function createPluginUniformBlock(engine: EngineContext, name: string, fields: PluginUniformDecl[], visibility?: "fragment" | "vertex" | "vertex-fragment"): PluginUniformBlock;
 
-/** Send a uniform block's `data` to its buffer. */
-export declare function writePluginUniformBlock(engine: EngineContext, block: PluginUniformBlock): void;
+/** Send a uniform block's `data` to its buffer: all of it, or the bytes from `start` up to `end` alone (widened to
+ *  whole 4-byte words), for a block of which only a part moved. */
+export declare function writePluginUniformBlock(engine: EngineContext, block: PluginUniformBlock, start?: number, end?: number): void;
 
 /**
  * Enable bent-normal reflection occlusion (`PbrMaterialProps.bentNormalTexture`).
