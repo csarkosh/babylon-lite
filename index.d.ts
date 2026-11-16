@@ -13945,8 +13945,11 @@ export declare function setMaxLights(n: number): void;
 /** Select initialized geometry without uploading or replacing GPU buffers.
  *  Requires owned, unshared, tightly-packed uint32 geometry without vertex deformation.
  *  Refreshes active CPU geometry/bounds and invalidates cached render/shadow bundles.
- *  Complete geometry updates clear this selection. */
-export declare function setMeshDrawRange(engine: EngineContext, mesh: Mesh, range: MeshDrawRange): void;
+ *  Complete geometry updates clear this selection.
+ *  `own` (dayhike): mark only this mesh's recorded draw stale, so a render task records again the one part of its
+ *  opaque list that holds the mesh, where every bundle of every pass is recorded again without it. A shadow or a
+ *  geometry pass records by the scene's version and is not told: leave it false for a mesh drawn in one. */
+export declare function setMeshDrawRange(engine: EngineContext, mesh: Mesh, range: MeshDrawRange, own?: boolean): void;
 
 /** Borrow the five GPU-authored indexed-indirect words at an aligned byte offset.
  *  Pass null to restore the CPU draw. The allocation remains caller-owned; clones
