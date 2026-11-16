@@ -249,7 +249,7 @@ next, whatever the build: with its history started again on every page the two b
 bytes at the forest and the beach, and elsewhere pictures within what loads differ by (between the
 builds 0.003 to 0.032 of 255 on average, between two loads of one build 0.003 to 0.022). With the
 game on every hook the low tier is again the same bytes at the five views, the chain tiers the same
-bytes as a run of the unchanged game at three views of four and within the same floor at the others,
+bytes as a run of the unchanged game at two views of four and within the same floor at the others,
 and the lake's shore panorama differs only where the reflected crowns are dithered, the screen-door
 now laid on the picture's own columns. The break and the task's word were also driven on a
 stand-in device through thousands of random changes, each frame issuing exactly the lists' draws in
