@@ -12894,6 +12894,12 @@ export declare interface RenderTargetDescriptor {
     depthCompare?: GPUCompareFunction;
     /** MSAA sample count: `1` = single-sample (no multisampling), `4` = 4x MSAA. */
     samples: number;
+    /** dayhike: keep the target's textures while its size, formats and sample count stand, where they are destroyed
+     *  and made again at every build (every recording of a frame's passes, a resize or not); and have the target hold
+     *  a claim on them, so a material that bound one through a texture facade does not destroy it by letting go of
+     *  it. For a target made with `createRenderTarget`; an eager one (`createRenderTargetTexture`) stands and holds
+     *  its claim already. What the textures hold is then kept across a recording too. Default false. */
+    keep?: boolean;
     /** A `SurfaceContext` for full surface dimensions, `{ surface, scale }` for
      *  scaled live dimensions, or explicit `{ width, height }` device pixels.
      *  Surface-backed sizes are re-resolved on every `buildRenderTarget`. */
