@@ -19,7 +19,9 @@ compiled `lib/` (one file a source module) and `index.d.ts`, not the TypeScript 
 The first three tags' patches concern material plugins on the PBR material: Day Hike's look is a
 stack of plugins that, on Babylon.js, edit the PBR shader at its named points and by regex. The
 fourth tag's concern what a frame costs the main thread, the fifth's what a whole view of the game
-needed, the sixth's what the game costs as it streams its world past a moving camera.
+needed, the sixth's what the game costs as it streams its world past a moving camera, the seventh's
+what the game's passes cost: a pass broken only on a frame that reads what lies behind a surface, a
+pass with its own word on what it draws, one part of a picture drawn in place.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -153,6 +155,65 @@ the page makes to the GPU counted, with the pictures unchanged:
   collector.
 - **The scene's bind group is set once a pass**, not also before the bundles, which discard it.
 
+Tag `v1.39.3-dayhike.7`, each counted on Day Hike itself drawn by Lite at five of its views (a forest, a
+trailhead, a meadow, a lake, a beach) on its low, medium and high tiers, every call the page makes to the
+GPU counted, with a caller that adopts nothing drawing as it drew:
+
+- **A render task's pass broken before the meshes an application names: `enableRenderTaskBreak`.** A
+  surface that reads what lies behind it wants the frame as drawn so far. Lite's own way
+  (`enableRenderTaskTransmission`) copies the frame into a 1,024 x 1,024 texture whatever the frame's
+  size, breaks the pass only before its own refractive materials, leaves them blended, and records the
+  whole opaque list as one bundle whenever a mesh is shown or hidden. A break is made only on a frame
+  that shows a mesh marked `afterBreak`: the opaque draws, then the pass begun again over what they
+  stored, with the marked meshes first (an opaque one tests and writes depth) and the see-through
+  draws after. The colour kept between the halves is the task's own size; a multisampled task's first
+  half is resolved straight into it, so it costs no copy; the depth is kept by one triangle where
+  asked; `onBreak` hands the frame's encoder over between the halves. A PBR material on a marked mesh
+  has its bind group made when a draw list is built, so a plugin's `bindTextures` hands the kept
+  textures on, after a resize as before it. On the high tier with a lake's surface drawn so, opaque
+  over the kept frame: 12 passes a frame with the lake in view where there were 10 (the second half and
+  the depth's triangle), 10 at the forest as before; under a turning camera 227 draws recorded in 300
+  frames, as without a break (209 to 236).
+- **A render task shows or hides a mesh by its own word: `setTaskMeshVisible`.** A hidden mesh was in
+  no pass and a shown one in every pass that lists it, so what one pass alone needed was shown
+  everywhere for its frame, or drawn in the main view as nothing. A task's word on a mesh outranks the
+  mesh's; only that task's recorded parts that hold the mesh are recorded again. The lake's plants
+  stand in the shore panorama's pass whatever the frame's view holds, and its surface in the rain's
+  cover map: 18 draws recorded in 120 frames of a moving sky before, none after.
+- **A draw range can mark only its own mesh's recorded draw stale**: `setMeshDrawRange`'s fourth
+  argument. It marked every recorded draw of every pass stale and moved every scene's version. The sea
+  draws only the rings that hold water: 240,900 indices a frame fewer at the meadow, on either tier,
+  and nothing recorded for it. Shadow and geometry passes record by the scene's version and are not
+  told: for a mesh drawn in one, leave it off.
+- **A task clears its viewport alone and writes alpha 1 where it drew: `clearViewport`,
+  `alphaWhereDrawn`** on a render task's configuration. A task that draws one part of a larger picture
+  through its camera's viewport cleared the whole picture, and a PBR material cut out by its alpha
+  left the alpha it was cut at. One triangle lays the clear colour and the depth's clear value over
+  the viewport before the draws, and one after them writes an alpha of 1 wherever the depth is no
+  longer its clear value. A sector of the lake's shore panorama is drawn straight into its column: 14
+  passes on a sector's frame where there were 15, and its own target gone.
+- **A range of a plugin uniform block written alone**: `writePluginUniformBlock`'s start and end. The
+  game sends the run of the block's words that moved: on a still frame of the low tier with every
+  clock held, no buffer write where there was one of 5,312 bytes; on the medium tier 2,424 bytes in the
+  frame's three writes where there were 7,728 (the anti-aliasing's jitter moves two words of the
+  block); with the clocks running, 1,600 to 4,900 bytes a frame on the low tier where there were 6,200
+  to 9,300, and nothing saved on the medium, where the words that move stand at both ends of the block.
+- **A public way to a pass of one's own**: `getGpuDevice`, `getFrameEncoder`,
+  `getRenderTargetAttachments`, `createCustomTask`, for what an application read through private
+  fields.
+- **A shader material lets go of the textures it claimed.** It let go of `texture.texture` as the
+  facade read at that moment: for a facade over a render target, whose texture is made again when the
+  frame's passes are recorded, a texture it had never claimed, which its first release destroys. That
+  was the target's live texture. A fix, not a hook; the PBR and standard materials' claims are as they
+  were.
+- **A render target can keep its textures while its size stands: `keep`** on its descriptor. A plain
+  target's textures were destroyed and made again at every recording of the frame's passes, a resize
+  or not (a scene's groups built again for a mesh or a light that joined), and nobody held a claim on
+  them. With it they stand while the size, the formats and the sample count do, and the target holds
+  a claim on them. Over one load of the game's forest view on its medium tier the frame's passes are
+  recorded twelve times with no resize among them: the scene's samples, their depth, their resolve and
+  a mask were made twelve times each (80 MB of textures a recording), and once each with `keep`.
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
@@ -180,7 +241,30 @@ pages, and otherwise within what two runs of one build differ by (0.001 of 255 o
 were also driven on a stand-in device through thousands of random changes (meshes added, removed,
 shown, hidden, buffers made again), each frame replaying exactly the list.
 
-Not patched yet, known to be wanted: per-instance attributes through the GPU-culled and LOD-partner
+The seventh tag's were proved on the game, the page's clock held at one value from its first script.
+Unchanged, it draws the same bytes on the seventh tag's files as on the sixth's at the five views on
+the low tier, and its counts are the same. On the tiers with the post chain the temporal
+anti-aliasing settles into one of a few states a few of 255 apart from one load of a page to the
+next, whatever the build: with its history started again on every page the two builds drew the same
+bytes at the forest and the beach, and elsewhere pictures within what loads differ by (between the
+builds 0.003 to 0.032 of 255 on average, between two loads of one build 0.003 to 0.022). With the
+game on every hook the low tier is again the same bytes at the five views, the chain tiers the same
+bytes as a run of the unchanged game at three views of four and within the same floor at the others,
+and the lake's shore panorama differs only where the reflected crowns are dithered, the screen-door
+now laid on the picture's own columns. The break and the task's word were also driven on a
+stand-in device through thousands of random changes, each frame issuing exactly the lists' draws in
+the passes they belong to, and a build that uses neither recording exactly what the sixth tag records.
+
+Not patched yet, known to be wanted: a mesh that joins a recorded task built with what the mesh has
+(an instance list, a colour a vertex) where the task builds it at once with the scene's last build
+and an application keeps a hidden mesh in the scene to seed that build; a plain mesh's draw range in
+indirect arguments, so a range that changes records nothing; a depth bias on a PBR pipeline; the
+depth grab of `enableRenderTaskTransmission` under a bundler (its module is loaded for its side
+effect alone, which `"sideEffects": false` lets a bundler drop: the grab's `depthTexture` stays
+null) and a `transmissive` shader material on a thin-instanced mesh (its renderable does not carry
+the mark, so the pass is not broken for it); the PBR and standard materials letting go of the
+textures they claimed, as the shader material now does; a scene's groups built again twice at one
+join recording the frame's passes twice; per-instance attributes through the GPU-culled and LOD-partner
 paths; shadow and geometry passes' pipelines made asynchronously; an opaque order that keeps a
 pipeline's draws together across the places an application names for its materials (Day Hike's named
 places set a pipeline 15 to 45 times a frame for 8 to 19 pipelines); a thin-instanced mesh joining a
