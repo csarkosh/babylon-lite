@@ -14000,7 +14000,10 @@ export declare function setMaxLights(n: number): void;
  *  Complete geometry updates clear this selection.
  *  `own` (dayhike): mark only this mesh's recorded draw stale, so a render task records again the one part of its
  *  opaque list that holds the mesh, where every bundle of every pass is recorded again without it. A shadow or a
- *  geometry pass records by the scene's version and is not told: leave it false for a mesh drawn in one. */
+ *  geometry pass records by the scene's version and is not told: leave it false for a mesh drawn in one.
+ *  A range that stands is found so before anything of the mesh is read, and the indices a range's vertices were
+ *  found to hold are not walked again while the mesh keeps its lists. With `own`, a range of the vertices the mesh
+ *  already holds keeps the bounds the mesh has (they are not taken again from positions written in place since). */
 export declare function setMeshDrawRange(engine: EngineContext, mesh: Mesh, range: MeshDrawRange, own?: boolean): void;
 
 /** Borrow the five GPU-authored indexed-indirect words at an aligned byte offset.
