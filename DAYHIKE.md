@@ -21,7 +21,8 @@ stack of plugins that, on Babylon.js, edit the PBR shader at its named points an
 fourth tag's concern what a frame costs the main thread, the fifth's what a whole view of the game
 needed, the sixth's what the game costs as it streams its world past a moving camera, the seventh's
 what the game's passes cost: a pass broken only on a frame that reads what lies behind a surface, a
-pass with its own word on what it draws, one part of a picture drawn in place.
+pass with its own word on what it draws, one part of a picture drawn in place; the eighth's what a
+load makes twice and what a mesh written in place costs a frame.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -214,6 +215,68 @@ GPU counted, with a caller that adopts nothing drawing as it drew:
   recorded twelve times with no resize among them: the scene's samples, their depth, their resolve and
   a mask were made twelve times each (80 MB of textures a recording), and once each with `keep`.
 
+Tag `v1.39.3-dayhike.8`, each counted on Day Hike itself drawn by Lite (a load to a standing view, a
+walk of 60 m, its end scene played whole), every call the page makes to the GPU counted and Lite's own
+loops counted in a copy of its files, with a caller that adopts nothing drawing as it drew:
+
+- **A scene let go no longer clears the PBR pipelines the other scenes draw with.** Every scene that
+  built a PBR group cleared the page's whole cache of PBR layouts and pipelines as it was disposed, so
+  a scene made for one picture (a bake, a probe) emptied it under every scene still drawing, whose
+  next group build made each pipeline again, synchronously. Day Hike bakes seven far-tree pictures a
+  load, a scene each: of the 106 to 128 PBR pipelines a load made, 55 to 61 were ones it had already
+  made. The scenes that draw with the cache hold it, and it is cleared when the last is let go: a load
+  asks the device for 75 to 98 render pipelines where it asked for 130 to 159, and for 134 to 174
+  shader modules where it asked for 244 to 296.
+- **One shader module a stage for every pipeline of a PBR layout.** A pipeline for a second target
+  (a cover map's, a mask's, a reflection's) made the layout's two modules again from the same text.
+  They are kept on the layout: on the medium tier, where 67 pipelines are made of 64 layouts, 168
+  shader modules a load where there were 174; on the low tier a layout has one pipeline and nothing
+  changes.
+- **A draw range that stands, or moves over triangles already walked, reads nothing of the mesh.**
+  `setMeshDrawRange` walked every index of its range before it looked whether the range was the one
+  already set, and on a change took the bounds of the range's positions again. The test for a range
+  that stands comes first; a range's source keeps the run of its index list it has walked, and a
+  range is walked only where it reaches past the run; with `own`, a range of the very positions the
+  mesh holds keeps the mesh's bounds. The game's sea sets its range where its run of wet rings
+  changes (three times in a load and a 60 m walk by the trailhead): 1,266,330 indices walked and
+  1,103,679 floats of positions read there before, 446,940 and none after.
+- **A blended mesh can be ordered by a point of its own: `Mesh.sortOrigin`.** A task orders its
+  see-through draws by the depth of each mesh's origin and only then by render order, so an
+  application that orders them by place stood every such mesh at the world's origin with its vertices
+  in world coordinates, and laid a moving one again every frame. `sortOrigin` is the world point the
+  order measures a mesh's depth from; meshes given one point are ordered among themselves by render
+  order alone, wherever their matrices put them. The driven car's glass rides the car's matrix: while
+  the car moves, two buffer writes and 16,728 bytes a frame (its 697 vertices' positions and normals)
+  become the one write of its own matrix, 144 bytes.
+- **A plain mesh can draw from indirect arguments of its own: `enableMeshDrawArgs`.** A mesh whose
+  list of triangles is written in place (`updateMeshGeometryCapacity`) drew its whole index capacity,
+  the tail cleared and drawn as triangles of no area, in every pass that draws it; a draw range would
+  hold it to the list, but is let go by every such write and records the draw again when set. With
+  the mesh's count, first index and base vertex in five words of a buffer of its own, a list's write
+  or a draw range writes those words and records nothing, and the tail is neither drawn nor cleared.
+  Day Hike's steep ground is one such mesh, its list changed at every patch that lands or leaves (64
+  times in a 60 m walk): on the low tier 248,244 indices a frame fewer at every view counted, still,
+  turning or walking.
+- **What a task's break keeps can stand from one recording to the next: `keep`** on
+  `RenderTaskBreakOptions`. The kept colour and depth were made again at every recording of the
+  frame's passes (11.2 MB and 5.6 MB on the game's high tier, some twelve times a load with no
+  resize); with `keep` they stand while the task's size, format and sample count do, the depth while
+  the depth texture it reads does.
+- **The first scene node a page makes can be let go.** A node's `parent`, `worldMatrix` and
+  `worldMatrixVersion` were accessors written in its object literal, closures made a node; V8 keeps a
+  literal's first accessors with the shape every later node shares, so the first node a page made,
+  and all it reached (its meshes, their buffers, their device, destroyed or not), stayed reachable for
+  the page's life: a whole renderer's worth after a tier is switched or a device is lost. The three
+  are one set of accessors for every node, each node's own properties as before.
+- **A task, or a scene, can make its PBR pipelines at once: `syncPipelines`** on a render task's
+  configuration and on a scene. With `enableAsyncPbrPipelines` every task leaves a mesh out of its
+  pass until the mesh's pipeline is ready, which a pass whose picture is drawn once and kept (a bake,
+  a mask, a cover map, a reflection) cannot afford, so an application with such passes could move no
+  pipeline off the main thread. A task that refuses makes its own as its draws are built. With the
+  game's own pass waiting and its bakes' refusing, a load makes 28 render pipelines synchronously and
+  49 off the main thread on the low tier (77 and none before) and 45 and 53 on the medium (98 and
+  none); whether the game adopts it is for a timed machine to say.
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
@@ -255,10 +318,28 @@ now laid on the picture's own columns. The break and the task's word were also d
 stand-in device through thousands of random changes, each frame issuing exactly the lists' draws in
 the passes they belong to, and a build that uses neither recording exactly what the sixth tag records.
 
+The eighth tag's were proved as the seventh's were, the page's clock held at one value from its first
+script. Unchanged, the game draws the same bytes on the eighth tag's files as on the seventh's at the
+five views on the low tier. With the car's glass on `sortOrigin` and the steep ground's mesh on
+`enableMeshDrawArgs` the low tier is again the same bytes at those five views and at a sixth that
+holds the parked car, and on the tiers with the post chain the pictures at the car and the forest
+stand within what two loads of the seventh tag differ by (between the builds 2.4 to 5.4 % of pixels
+by at most 9 to 14 of 255, between two loads of the seventh tag 2.3 to 5.7 % by at most 10 to 14).
+With the game's own pass also waiting for its pipelines and its kept passes refusing, the low tier
+is the same bytes at the five views once loaded. `setMeshDrawRange`, the indirect arguments, the
+break's `keep` and `syncPipelines` were each driven on a stand-in device through thousands of random
+changes (a range against the seventh tag call for call: the same throws, the same mesh after each),
+and the scene node in Chrome itself: of 2,000 nodes made and dropped in a page with no device, the
+first stays alive for good on the seventh tag's files and none on the eighth's. The break's `keep`
+was not drawn in a page: the game does not break a pass yet.
+
 Not patched yet, known to be wanted: a mesh that joins a recorded task built with what the mesh has
 (an instance list, a colour a vertex) where the task builds it at once with the scene's last build
-and an application keeps a hidden mesh in the scene to seed that build; a plain mesh's draw range in
-indirect arguments, so a range that changes records nothing; a depth bias on a PBR pipeline; the
+and an application keeps a hidden mesh in the scene to seed that build; the clear coat's lobe and
+its share of the direct light taken from every light, where they come from a mesh's first light
+alone, whatever its intensity; `keep` for a scene's own default pass's target; a shader material's
+thin instances without the matrix buffer where the stage places them itself; an order among the
+panes of one blended mesh; a depth bias on a PBR pipeline; the
 depth grab of `enableRenderTaskTransmission` under a bundler (its module is loaded for its side
 effect alone, which `"sideEffects": false` lets a bundler drop: the grab's `depthTexture` stays
 null) and a `transmissive` shader material on a thin-instanced mesh (its renderable does not carry
