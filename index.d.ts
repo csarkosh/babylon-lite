@@ -9045,6 +9045,11 @@ export declare interface Mesh extends SceneNode {
      *  its place among the see-through draws. The pass is broken only on frames where such a mesh is visible. Read
      *  when the mesh's draw is built: set it before the mesh joins a scene. No effect on a task without a break. */
     afterBreak?: boolean;
+    /** The world point a blended draw of this mesh is ordered by among a task's see-through draws (farthest first
+     *  by this point's depth in the view, then by `renderOrder`), in place of the mesh's own origin. Meshes given one
+     *  point (the world's origin, say) are ordered among themselves by `renderOrder` alone from every view, wherever
+     *  each mesh's matrix puts it. Read every frame; unset, the mesh's origin orders it as before. */
+    sortOrigin?: ArrayLike<number>;
     /** Thin instance data (CPU-side). GPU buffer managed by render system. */
     thinInstances?: ThinInstanceData | null;    /** Explicit opt-in that this mesh's RGBA vertex or thin-instance colours drive
      *  translucency (Babylon `AbstractMesh.hasVertexAlpha`). When `true` and the mesh
