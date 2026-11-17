@@ -14016,6 +14016,16 @@ export declare function setMaxLights(n: number): void;
  *  already holds keeps the bounds the mesh has (they are not taken again from positions written in place since). */
 export declare function setMeshDrawRange(engine: EngineContext, mesh: Mesh, range: MeshDrawRange, own?: boolean): void;
 
+/** Draw a plain mesh from indirect arguments of its own (dayhike): the count, the first index and the base vertex of
+ *  its draw are five words in a buffer Lite writes when a draw range (`setMeshDrawRange`) or the list handed to
+ *  `updateMeshGeometryCapacity` or `updateMeshGeometry` changes them, and the mesh's recorded draw stands, so such a
+ *  change records nothing in any pass (a draw range then marks nothing stale, whatever its `own`). After a capacity
+ *  update the mesh draws the list it was handed and no more, where without this it draws its whole index capacity,
+ *  the tail as triangles of no area; and the tail is no longer cleared. The arguments are kept over a growth of the
+ *  mesh's buffers. For a mesh drawn with a PBR material and without thin instances; a shadow or a geometry pass does
+ *  not read them. Calling it records the mesh's own draw again, once. */
+export declare function enableMeshDrawArgs(engine: EngineContext, mesh: Mesh): void;
+
 /** Borrow the five GPU-authored indexed-indirect words at an aligned byte offset.
  *  Pass null to restore the CPU draw. The allocation remains caller-owned; clones
  *  require their own binding. GPU-role allocations and their producers must be
