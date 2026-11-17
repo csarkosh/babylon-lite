@@ -5731,6 +5731,11 @@ export declare interface RenderTaskBreakOptions {
     /** Called between the halves on a frame that breaks, with the frame's command encoder: passes of the
      *  application's own (a depth resolve of its own, say). */
     onBreak?: (encoder: GPUCommandEncoder) => void;
+    /** Let what is kept stand from one recording of the task to the next while the task's size, its colour format and
+     *  its sample count stand, and the depth while the task's own depth texture is the one it was made to read (a
+     *  task whose targets are kept, `RenderTargetDescriptor.keep`). Without it both textures are made again at every
+     *  recording of the frame's passes, a resize or not. Default false. */
+    keep?: boolean;
 }
 
 /** Handle to a render task's break, returned by `enableRenderTaskBreak`. */
