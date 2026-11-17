@@ -13008,6 +13008,12 @@ export declare interface RenderTaskConfig {
      *  read as "something was drawn here", which an alpha-tested PBR material would leave at the alpha it was cut at.
      *  Needs a depth attachment; see-through draws, which write no depth, leave their own alpha. Default false. */
     alphaWhereDrawn?: boolean;
+    /** dayhike: this task's PBR pipelines are made as its draws are built, never off the main thread: with
+     *  `enableAsyncPbrPipelines` a task leaves a mesh out of its pass until the mesh's pipeline is ready, and a task
+     *  whose picture is drawn once and kept (a bake, a mask, a map of what covers the ground, a reflection) would keep
+     *  a picture short of that mesh. Such a task refuses here, and draws whole from its first frame. `syncPipelines`
+     *  on a scene says the same for every task of it. No effect without `enableAsyncPbrPipelines`. Default false. */
+    syncPipelines?: boolean;
     /** Scene-texture transmission settings. `copyCount: 0` copies before every transmissive draw.
      *  `generateMipmaps: false` allocates only mip 0 for the refraction texture and skips mip generation.
      *  `mipLevelCount` caps the generated chain when a material only samples low explicit LODs.
@@ -13298,6 +13304,10 @@ export declare interface SceneColorGrab {
 /** Top-level scene context — pure state, no attached methods. */
 export declare interface SceneContext extends RenderingContext_2 {    /** Optional display name for tooling and diagnostics. */
     name?: string;
+    /** dayhike: every task of this scene makes its PBR pipelines as its draws are built (see
+     *  `RenderTaskConfig.syncPipelines`): for a scene drawn once for one picture, whose own pass an application
+     *  has no configuration record of. Read when a task's draws are built. */
+    syncPipelines?: boolean;
     /** Surface this scene renders into. Set at scene-creation time and immutable
      *  afterwards — the default render task is sized and MSAA-matched to this surface,
      *  and `registerScene` attaches the scene to it. For the engine's primary surface
