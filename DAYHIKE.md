@@ -254,9 +254,9 @@ loops counted in a copy of its files, with a caller that adopts nothing drawing 
   hold it to the list, but is let go by every such write and records the draw again when set. With
   the mesh's count, first index and base vertex in five words of a buffer of its own, a list's write
   or a draw range writes those words and records nothing, and the tail is neither drawn nor cleared.
-  Day Hike's steep ground is one such mesh, its list changed at every patch that lands or leaves (64
-  times in a 60 m walk): on the low tier 248,244 indices a frame fewer at every view counted, still,
-  turning or walking.
+  Day Hike's steep ground is one such mesh, its list changed at every patch that lands or leaves: a
+  frame draws 248,244 indices fewer on the low tier, 451,350 on the medium and 812,430 on the high,
+  at every view counted, still, turning or walking.
 - **What a task's break keeps can stand from one recording to the next: `keep`** on
   `RenderTaskBreakOptions`. The kept colour and depth were made again at every recording of the
   frame's passes (11.2 MB and 5.6 MB on the game's high tier, some twelve times a load with no
