@@ -5385,6 +5385,14 @@ export declare function enableAsyncPbrPipelines(): void;
  *  asked for as draw lists are built. */
 export declare function whenPbrPipelinesIdle(): Promise<void>;
 
+/** dayhike: make a forward pass's ShaderMaterial render pipelines off the main thread, as
+ *  `enableAsyncPbrPipelines` makes the PBR ones: a mesh whose pipeline is compiling is left out of a task
+ *  that may wait and joins it on the frame after the pipeline is ready, whenever its material joined the
+ *  scene. A task that refuses (`syncPipelines`, on it or its scene) makes its own at once, and a task that
+ *  draws whole (`drawWhole`) draws nothing meanwhile. Process-global; call before the first frame. A
+ *  pipeline that fails is made again the synchronous way. `whenPbrPipelinesIdle` counts these too. */
+export declare function enableAsyncShaderMaterialPipelines(): void;
+
 /** A uniform buffer of the application's own that PBR material plugins read (`MaterialPlugin.getUniformBlocks`). */
 export declare interface PluginUniformBlock {
     /** The WGSL variable's name: a field is read as `<name>.<field>`. */
