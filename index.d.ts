@@ -5393,6 +5393,15 @@ export declare function whenPbrPipelinesIdle(): Promise<void>;
  *  pipeline that fails is made again the synchronous way. `whenPbrPipelinesIdle` counts these too. */
 export declare function enableAsyncShaderMaterialPipelines(): void;
 
+/** dayhike: ask for at most `count` pipelines off the main thread in one frame (`renderFrame`), across every
+ *  task and scene; a draw whose pipeline would be one more is left out as though its pipeline were compiling,
+ *  and its pipeline is asked for on a frame after (`whenPbrPipelinesIdle` waits for it too). Each ask makes
+ *  its shader modules on the main thread first, and the browser compiles what a frame asked for together: an
+ *  application that adds many meshes at once can spread them. Only with `enableAsyncPbrPipelines` or
+ *  `enableAsyncShaderMaterialPipelines`; a pipeline made at once is never put off. `Infinity` (the default),
+ *  0 or less: no bound. */
+export declare function setPipelineAsksPerFrame(count: number): void;
+
 /** A uniform buffer of the application's own that PBR material plugins read (`MaterialPlugin.getUniformBlocks`). */
 export declare interface PluginUniformBlock {
     /** The WGSL variable's name: a field is read as `<name>.<field>`. */
