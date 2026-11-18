@@ -22,7 +22,8 @@ fourth tag's concern what a frame costs the main thread, the fifth's what a whol
 needed, the sixth's what the game costs as it streams its world past a moving camera, the seventh's
 what the game's passes cost: a pass broken only on a frame that reads what lies behind a surface, a
 pass with its own word on what it draws, one part of a picture drawn in place; the eighth's what a
-load makes twice and what a mesh written in place costs a frame.
+load makes twice and what a mesh written in place costs a frame; the ninth's what a load holds the
+browser's GPU thread with while it compiles pipelines.
 
 Patches so far. Tag `v1.39.3-dayhike.1`:
 
@@ -277,6 +278,45 @@ loops counted in a copy of its files, with a caller that adopts nothing drawing 
   49 off the main thread on the low tier (77 and none before) and 45 and 53 on the medium (98 and
   none); whether the game adopts it is for a timed machine to say.
 
+Tag `v1.39.3-dayhike.9`, each counted on Day Hike itself loading from its landing page through Play to its
+world being in, every pipeline and shader module the page asked for counted with its maker, on its low,
+medium and high tiers. A pipeline made the synchronous way holds the browser's GPU thread while it
+compiles, cold for 0.2 to 1.5 s each, and that thread presents the page's frames, a video's too:
+
+- **A task can wait for its pipelines and draw whole or not at all: `drawWhole`** on a render task's
+  configuration. A task whose picture is drawn once and kept (a bake, a mask, a map of what covers the
+  ground, a reflection) had to make its pipelines at once (`syncPipelines`) under
+  `enableAsyncPbrPipelines`, or keep a picture short of a mesh. Such a task asks for its pipelines off
+  the main thread as the others do, and on a frame where a draw of its list waits for one it begins no
+  pass and leaves its target as it stood; `isRenderTaskHeld(task)` says so of its last frame, and
+  `whenRenderTaskPipelinesIdle(task)` resolves once the pipelines its list last waited for are in, so a
+  bake waits before its draw and its read-back and a task drawn on demand is asked again. The count of
+  pipelines compiling is the engine's, which `whenPbrPipelinesIdle` reads. `syncPipelines` outranks it.
+- **A shader material's pipelines can be made off the main thread whenever it joins:
+  `enableAsyncShaderMaterialPipelines`.** `enableAsyncShaderPipelineCompilation` prepares the shader
+  materials a scene holds when it is registered; one that joins later made its pipeline the synchronous
+  way at its first draw. Under this switch a forward pass's shader-material pipelines are asked for as
+  the PBR ones are: a draw left out of a task that may wait until its pipeline is in, a task that refuses
+  making its own at once, a refused ask made at once at the next build; the two share their pending
+  pipelines, and `whenPbrPipelinesIdle` counts these too.
+- **Lite's own helper pipelines are asked for off the main thread where their callers wait.** The read
+  of a texture's pixels (`readTexturePixelsRGBA8`) made a module and a pipeline at every call (fourteen
+  a load in Day Hike, two a far-tree bake): it keeps them a kind of read for the device, the first asked
+  for with the asynchronous make. The RGBD decode of an environment's BRDF table and a format's mip-chain
+  blit are asked for so before an awaiting caller (`createCustomEnvironment`, the glTF loader,
+  `createTexture2DFromExternalImage`, `loadTexture2D`) first needs them; a caller that does not await
+  (`createTexture2DFromPixels`, a cube's mips) makes the blit as it did, once a format.
+- **The pipelines asked for off the main thread can be bounded a frame: `setPipelineAsksPerFrame`.** An
+  ask still makes its shader modules on the main thread, and the browser compiles what one frame asked
+  for together: a frame of Day Hike's load asked for 25 to 29 pipelines and 50 to 58 modules at once.
+  With a bound, a draw whose pipeline would be one more waits as though its pipeline were compiling, and
+  a frame after asks for it; the waits above wait for it too. A pipeline made at once is never put off.
+
+With them Day Hike's load (its own pass waiting, its kept passes drawing whole, its own passes' pipelines
+asked for off the main thread, four asks a frame) asks the device for no render or compute pipeline the
+synchronous way from its renderer's making to its world being in but those named in its own notes, and
+once its world is in it makes every pipeline at once again (`syncPipelines` on its scene).
+
 The first tag's patches were proved on Day Hike's own plugins ported to WGSL (the atmosphere, the wet surfaces, the
 foliage's wind and lighting, the distance fade) against Babylon.js 9.18 drawing the same scene with
 the game's plugins: the pictures agree to within 0.11 of 255 on average. The second tag's were proved by probes of what
@@ -333,6 +373,19 @@ and the scene node in Chrome itself: of 2,000 nodes made and dropped in a page w
 first stays alive for good on the seventh tag's files and none on the eighth's. The break's `keep`
 was not drawn in a page: the game does not break a pass yet.
 
+The ninth tag's were driven on a stand-in device each through thousands of random frames (a task that
+draws whole beside one that waits and one that refuses, meshes joining and leaving with pipelines one to
+six frames late; shader-material binds through Lite's own `getOrCreateShaderPipeline` with asks that come
+back late or are refused; reads, mip chains and decodes; bursts of forty meshes under a bound of four),
+and with neither switch on a build that adopts nothing records exactly what the eighth tag records. In Day
+Hike, from its landing page through Play to its world being in, at its trailhead: the pipelines made the
+synchronous way fell from 78, 96 and 93 to 1, 1 and 2 on the low, medium and high tiers (57, 78 and 78
+asked for off the main thread), none was made after the world was in in 20 seconds either way, the most
+asks of one frame fell from 25 to 29 to 6 to 11 (the game's own post chain asks for its six to nine
+together) and the most shader modules of one frame from 50 to 58 to 12 to 16; the low tier draws the same
+bytes at its six standing views once loaded (at the trailhead one load of two came out a few pixels
+apart, as loads of one build at times do).
+
 Not patched yet, known to be wanted: a mesh that joins a recorded task built with what the mesh has
 (an instance list, a colour a vertex) where the task builds it at once with the scene's last build
 and an application keeps a hidden mesh in the scene to seed that build; the clear coat's lobe and
@@ -350,4 +403,8 @@ paths; shadow and geometry passes' pipelines made asynchronously; an opaque orde
 pipeline's draws together across the places an application names for its materials (Day Hike's named
 places set a pipeline 15 to 45 times a frame for 8 to 19 pipelines); a thin-instanced mesh joining a
 built scene without every PBR renderable of the scene being built again (2,000 to 2,750 bind groups
-made in one of the game's loads); one vertex buffer a mesh where there are four to six.
+made in one of the game's loads); one vertex buffer a mesh where there are four to six; the bound on asks
+a frame counted by the page's own frame (every `renderFrame` begins a count now, a bake's on a surface of
+its own too); the blit of a format made the synchronous way by a caller that does not await
+(`createTexture2DFromPixels`, a cube's mips) and the transmission depth grab's pipeline made at a
+recording.
