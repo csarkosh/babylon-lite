@@ -12656,6 +12656,15 @@ export declare function removeMeshFromTask(task: RenderTask, mesh: object): void
  *  the meshes' own word. Forgotten when the mesh is removed from the task. */
 export declare function setTaskMeshVisible(task: RenderTask, mesh: Mesh, visible: boolean | undefined): void;
 
+/** dayhike: whether `task` drew nothing on its last frame because a draw of its list waited for its pipeline
+ *  (`RenderTaskConfig.drawWhole`). */
+export declare function isRenderTaskHeld(task: RenderTask): boolean;
+
+/** dayhike: resolves once none of the pipelines the draws of `task` waited for, as its list was last built, is
+ *  compiling (at once where none waited). The list is built again on the task's next frame; meshes that joined
+ *  meanwhile may wait for more, so a task drawn on demand is drawn, and `isRenderTaskHeld` looked at, after this. */
+export declare function whenRenderTaskPipelinesIdle(task: RenderTask): Promise<void>;
+
 /** Remove an instance from a scene. Idempotent; the instance stops being
  *  selected or submitted immediately. */
 export declare function removeMeshLoDFromScene(scene: SceneContext, instance: MeshLoDInstance): void;
@@ -13014,6 +13023,14 @@ export declare interface RenderTaskConfig {
      *  a picture short of that mesh. Such a task refuses here, and draws whole from its first frame. `syncPipelines`
      *  on a scene says the same for every task of it. No effect without `enableAsyncPbrPipelines`. Default false. */
     syncPipelines?: boolean;
+    /** dayhike: this task's pipelines are asked for off the main thread as the other tasks' are, and it draws whole or
+     *  not at all: on a frame where a draw of its list waits for its pipeline the task draws nothing, no pass is begun
+     *  and its target stands as it was (`isRenderTaskHeld`). For a task whose picture is kept (a bake, a mask, a map of
+     *  what covers the ground, a reflection) that an application would otherwise have make its pipelines at once
+     *  (`syncPipelines`, which outranks this): await `whenRenderTaskPipelinesIdle` before a draw that is read back,
+     *  and ask a task drawn on demand again when it was held. No effect without `enableAsyncPbrPipelines`. Default
+     *  false. */
+    drawWhole?: boolean;
     /** Scene-texture transmission settings. `copyCount: 0` copies before every transmissive draw.
      *  `generateMipmaps: false` allocates only mip 0 for the refraction texture and skips mip generation.
      *  `mipLevelCount` caps the generated chain when a material only samples low explicit LODs.
